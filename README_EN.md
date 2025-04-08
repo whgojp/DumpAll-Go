@@ -29,6 +29,16 @@ DumpAll-Go is a Go language reconstruction of [DumpAll](https://github.com/0x727
 
 ### Installation
 
+#### Method 1: Download Binary
+
+Download the appropriate binary from the [Releases](https://github.com/whgojp/DumpAll-Go/releases) page:
+
+- Windows: `dumpall-go-windows-amd64.exe` or `dumpall-go-windows-386.exe`
+- Linux: `dumpall-go-linux-amd64` or `dumpall-go-linux-386` or `dumpall-go-linux-arm64`
+- macOS: `dumpall-go-darwin-amd64` or `dumpall-go-darwin-arm64`
+
+#### Method 2: Build from Source
+
 ```bash
 # Clone repository
 git clone https://github.com/whgojp/DumpAll-Go.git
@@ -37,11 +47,21 @@ git clone https://github.com/whgojp/DumpAll-Go.git
 cd DumpAll-Go
 
 # Install dependencies
-go mod tidy
+make deps
 
-# Build
-go build
+# Build for all platforms
+make all
+
+# Or build for current platform only
+make build
+
+# Or build for specific platform
+make build-windows  # Build for Windows
+make build-linux    # Build for Linux
+make build-darwin   # Build for macOS
 ```
+
+The compiled binaries will be in the `build` directory.
 
 ### Usage
 
@@ -81,6 +101,8 @@ We welcome all forms of contributions, including but not limited to:
 - Submitting issues and suggestions
 - Improving documentation
 - Contributing code fixes or new features
+
+Please check [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
 ## 📄 License
 
