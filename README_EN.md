@@ -102,15 +102,8 @@ We welcome all forms of contributions, including but not limited to:
 - Improving documentation
 - Contributing code fixes or new features
 
-Please check [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
-
 ## 📄 License
 
 When we speak of free software, we are referring to freedom, not price.
 
 This project is licensed under the [Apache License 2.0](LICENSE).
-
-## 🙏 Acknowledgments
-
-- Thanks to the original [DumpAll](https://github.com/0x727/DumpAll) project for inspiration
-- Thanks to all contributors for their support 

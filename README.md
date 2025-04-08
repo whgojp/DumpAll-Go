@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![DumpAll-Go Logo](./pic/logo.png)
+
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/whgojp/DumpAll-Go)](https://github.com/whgojp/DumpAll-Go)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
@@ -102,13 +102,11 @@ Flags:
 
 ## 🤝 贡献指南
 
-我们非常欢迎各种形式的贡献，包括但不限于：
+欢迎各种形式的贡献，包括但不限于：
 
 - 提交问题和建议
 - 改进文档
 - 提交代码修复或新功能
-
-请查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解更多细节。
 
 ## 📄 开源许可
 
@@ -120,10 +118,3 @@ When we speak of free software, we are referring to freedom, not price.
 
 - 感谢原项目 [DumpAll](https://github.com/0x727/DumpAll) 的启发
 - 感谢所有贡献者的支持
-
-## 📞 联系方式
-
-如果您有任何问题或建议，欢迎通过以下方式联系我们：
-
-- 提交 [Issue](https://github.com/whgojp/DumpAll-Go/issues)
-- 发送邮件至：[your-email@example.com]
