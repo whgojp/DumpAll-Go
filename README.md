@@ -2,8 +2,6 @@
 
 <div align="center">
 
-
-
 [![Go Version](https://img.shields.io/github/go-mod/go-version/whgojp/DumpAll-Go)](https://github.com/whgojp/DumpAll-Go)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
@@ -23,11 +21,13 @@ DumpAll-Go 是一个基于 [DumpAll](https://github.com/0x727/DumpAll) 的 Go �
 - 📦 开箱即用：无需复杂的环境配置
 - 🔄 并发处理：支持批量扫描多个目标
 - 🛡️ 稳定可靠：更强的容错能力和稳定性
+- 🌐 代理支持：支持 HTTP / HTTPS / SOCKS5 / SOCKS5H 代理
+- 🔓 SVN 源码提取：从 `.svn` 泄露中一键还原完整源代码
 
 ### 🎯 适用场景
 
 - `.git` 源代码泄露
-- `.svn` 源代码泄露
+- `.svn` 源代码泄露 + 一键提取还原
 - `.DS_Store` 信息泄露
 - 目录列表泄露
 
@@ -71,6 +71,8 @@ make build-darwin   # 编译 macOS 版本
 
 ### 使用方法
 
+#### 默认扫描模式
+
 ```bash
 Usage:
   dumpall-go [flags]
@@ -79,9 +81,36 @@ Flags:
   -u, --url string      目标URL
   -f, --file string     包含URL列表的文件
   -o, --outdir string   输出目录 (default "output")
-  -p, --proxy string    代理服务器 (例如: http://127.0.0.1:8080)
+  -p, --proxy string    代理服务器 (支持: http://host:port | https://host:port | socks5://host:port | socks5h://host:port)
   -w, --workers int     并发工作线程数 (default 10)
   -h, --help           查看帮助信息
+```
+
+#### svn-extract —— SVN 源码提取
+
+当已确认目标存在 `.svn` 信息泄露时，使用 `svn-extract` 子命令直接提取还原完整源代码。
+
+```bash
+Usage:
+  dumpall-go svn-extract [flags]
+
+Flags:
+  -u, --url string      目标 URL（必填，例如: http://example.com/）
+  -o, --outdir string   输出目录（默认: output/<hostname>）
+  -p, --proxy string    代理服务器 (支持: http://host:port | socks5://host:port | socks5h://host:port)
+  -w, --workers int     并发下载线程数 (default 10)
+  -h, --help           查看帮助信息
+```
+
+支持两种 SVN 格式：
+- **SVN 1.6 及更早**：解析 `.svn/entries`，从 `.svn/text-base/*.svn-base` 提取文件
+- **SVN 1.7 及以上**：解析 `.svn/wc.db`（SQLite），直接下载文件
+
+输出目录结构：
+```
+output/<hostname>/
+  ├── .svn/           ← 缓存的 SVN 元数据
+  └── extracted/      ← ✅ 还原的源码（结构与原项目完全一致）
 ```
 
 ### 使用示例
@@ -90,16 +119,34 @@ Flags:
 ```bash
 ./dumpall-go -u http://example.com/
 ```
-
-![单个目标扫描](./pic/url.png)
-
 2. 批量扫描：
 ```bash
 ./dumpall-go -f target.txt
 ```
-
-![批量扫描](./pic/file.png)
-
+3. 使用 HTTP 代理扫描：
+```bash
+./dumpall-go -u http://example.com/ -p http://127.0.0.1:8080
+```
+4. 使用 SOCKS5 代理扫描：
+```bash
+./dumpall-go -u http://example.com/ -p socks5://127.0.0.1:1080
+```
+5. 使用带认证的 SOCKS5 代理：
+```bash
+./dumpall-go -u http://example.com/ -p socks5://user:pass@127.0.0.1:1080
+```
+6. 使用 SOCKS5H 代理（由代理服务器解析 DNS）：
+```bash
+./dumpall-go -u http://example.com/ -p socks5h://127.0.0.1:1080
+```
+7. 提取 SVN 泄露的源代码：
+```bash
+./dumpall-go svn-extract -u http://example.com/
+```
+8. 通过 SOCKS5 代理提取 SVN 源码并指定输出目录：
+```bash
+./dumpall-go svn-extract -u http://example.com/ -p socks5://127.0.0.1:1080 -o ./leaked-src
+```
 ## 🤝 贡献指南
 
 欢迎各种形式的贡献，包括但不限于：

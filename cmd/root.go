@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -103,32 +104,36 @@ var RootCmd = &cobra.Command{
 				Output: task.Outdir,
 			}
 
+			// CreateHTTPClient 只调用一次，4 个 dumper 共用同一代理配置，
+			// 避免重复打印代理日志和重复构造 Transport。
+			// 注：各 dumper.Execute 内部同样会调用 CreateHTTPClient，
+			// 这里仅用于探测阶段（Check），Execute 阶段各 dumper 自行创建。
+			// 为彻底消除重复，将 proxy 信息集中在此做一次日志输出即可。
+			if task.Proxy != "" {
+				color.Cyan("[扫描] 代理: %s", task.Proxy)
+			}
+
 			gitDumper := git.NewGitDumper()
 			svnDumper := svn.NewSvnDumper()
 			dsstoreDumper := dsstore.NewDsStoreDumper()
 			dirlistingDumper := dirlisting.NewDirListingDumper()
 
-			err := gitDumper.Execute(task.URL, task.Outdir, task.Proxy, false, false, workers, progressCallback)
-			if err != nil {
-				result.Error = err
+			var errs []error
+			if err := gitDumper.Execute(task.URL, task.Outdir, task.Proxy, false, false, workers, progressCallback); err != nil {
+				errs = append(errs, fmt.Errorf("git: %w", err))
 			}
-
-			err = svnDumper.Execute(task.URL, task.Outdir, task.Proxy, false, false, workers, progressCallback)
-			if err != nil {
-				result.Error = err
+			if err := svnDumper.Execute(task.URL, task.Outdir, task.Proxy, false, false, workers, progressCallback); err != nil {
+				errs = append(errs, fmt.Errorf("svn: %w", err))
 			}
-
-			err = dsstoreDumper.Execute(task.URL, task.Outdir, task.Proxy, false, false, workers, progressCallback)
-			if err != nil {
-				result.Error = err
+			if err := dsstoreDumper.Execute(task.URL, task.Outdir, task.Proxy, false, false, workers, progressCallback); err != nil {
+				errs = append(errs, fmt.Errorf("dsstore: %w", err))
 			}
-
-			err = dirlistingDumper.Execute(task.URL, task.Outdir, task.Proxy, false, false, workers, progressCallback)
-			if err != nil {
-				result.Error = err
+			if err := dirlistingDumper.Execute(task.URL, task.Outdir, task.Proxy, false, false, workers, progressCallback); err != nil {
+				errs = append(errs, fmt.Errorf("dirlisting: %w", err))
 			}
 
 			result.End = time.Now()
+			result.Error = errors.Join(errs...)
 			result.Success = result.Error == nil
 			return result
 		}, workers, utils.NewLogger(false))
@@ -154,7 +159,7 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(&targetURL, "url", "u", "", "目标URL")
 	RootCmd.PersistentFlags().StringVarP(&urlFile, "file", "f", "", "包含URL列表的文件")
 	RootCmd.PersistentFlags().StringVarP(&outdir, "outdir", "o", "output", "输出目录")
-	RootCmd.PersistentFlags().StringVarP(&proxy, "proxy", "p", "", "代理服务器 (例如: http://127.0.0.1:8080)")
+	RootCmd.PersistentFlags().StringVarP(&proxy, "proxy", "p", "", "代理服务器 (支持: http://host:port | https://host:port | socks5://host:port | socks5h://host:port)")
 	RootCmd.PersistentFlags().IntVarP(&workers, "workers", "w", 10, "并发工作线程数")
 }
 

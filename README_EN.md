@@ -17,11 +17,13 @@ DumpAll-Go is a Go language reconstruction of [DumpAll](https://github.com/0x727
 - 📦 Ready to Use: No complex environment configuration required
 - 🔄 Concurrent Processing: Support for batch scanning of multiple targets
 - 🛡️ Reliable: Enhanced error tolerance and stability
+- 🌐 Proxy Support: HTTP / HTTPS / SOCKS5 / SOCKS5H proxy support
+- 🔓 SVN Source Extraction: One-click restore of full source code from `.svn` leakage
 
 ### 🎯 Use Cases
 
 - `.git` source code leakage
-- `.svn` source code leakage
+- `.svn` source code leakage + one-click extraction
 - `.DS_Store` information leakage
 - Directory listing exposure
 
@@ -65,6 +67,8 @@ The compiled binaries will be in the `build` directory.
 
 ### Usage
 
+#### Default Scan Mode
+
 ```bash
 Usage:
   dumpall-go [flags]
@@ -73,9 +77,36 @@ Flags:
   -u, --url string      Target URL
   -f, --file string     File containing list of URLs
   -o, --outdir string   Output directory (default "output")
-  -p, --proxy string    Proxy server (e.g., http://127.0.0.1:8080)
+  -p, --proxy string    Proxy server (supports: http://host:port | https://host:port | socks5://host:port | socks5h://host:port)
   -w, --workers int     Number of concurrent workers (default 10)
   -h, --help           Show help information
+```
+
+#### svn-extract — SVN Source Code Extraction
+
+When `.svn` information leakage is confirmed on the target, use the `svn-extract` subcommand to directly extract and restore the complete source code.
+
+```bash
+Usage:
+  dumpall-go svn-extract [flags]
+
+Flags:
+  -u, --url string      Target URL (required, e.g. http://example.com/)
+  -o, --outdir string   Output directory (default: output/<hostname>)
+  -p, --proxy string    Proxy server (supports: http://host:port | socks5://host:port | socks5h://host:port)
+  -w, --workers int     Number of concurrent download workers (default 10)
+  -h, --help           Show help information
+```
+
+Supports two SVN formats:
+- **SVN 1.6 and earlier**: Parses `.svn/entries`, extracts files from `.svn/text-base/*.svn-base`
+- **SVN 1.7 and above**: Parses `.svn/wc.db` (SQLite), downloads files directly
+
+Output directory structure:
+```
+output/<hostname>/
+  ├── .svn/           ← cached SVN metadata
+  └── extracted/      ← ✅ restored source code (matches original project structure)
 ```
 
 ### Examples
@@ -85,14 +116,35 @@ Flags:
 ./dumpall-go -u http://example.com/
 ```
 
-![Single Target Scan](./pic/url.png)
-
 2. Batch scanning:
 ```bash
 ./dumpall-go -f target.txt
 ```
 
-![Batch Scanning](./pic/file.png)
+3. Scan with HTTP proxy:
+```bash
+./dumpall-go -u http://example.com/ -p http://127.0.0.1:8080
+```
+4. Scan with SOCKS5 proxy:
+```bash
+./dumpall-go -u http://example.com/ -p socks5://127.0.0.1:1080
+```
+5. Scan with authenticated SOCKS5 proxy:
+```bash
+./dumpall-go -u http://example.com/ -p socks5://user:pass@127.0.0.1:1080
+```
+6. Scan with SOCKS5H proxy (DNS resolved by proxy server):
+```bash
+./dumpall-go -u http://example.com/ -p socks5h://127.0.0.1:1080
+```
+7. Extract SVN leaked source code:
+```bash
+./dumpall-go svn-extract -u http://example.com/
+```
+8. Extract SVN source code via SOCKS5 proxy with custom output directory:
+```bash
+./dumpall-go svn-extract -u http://example.com/ -p socks5://127.0.0.1:1080 -o ./leaked-src
+```
 
 ## 🤝 Contributing
 

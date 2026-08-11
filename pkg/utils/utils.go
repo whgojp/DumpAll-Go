@@ -3,6 +3,7 @@ package utils
 import (
 	"bufio"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -155,13 +156,9 @@ func CreateOutputDir(outdir string) error {
 	return nil
 }
 
-func ValidateURL(url string) error {
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		url = "https://" + url
-	}
-
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		return fmt.Errorf("URL必须以http://或https://开头")
+func ValidateURL(rawURL string) error {
+	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+		return fmt.Errorf("URL 必须以 http:// 或 https:// 开头，实际得到: %q", rawURL)
 	}
 	return nil
 }
@@ -183,4 +180,62 @@ func GetHostname(targetURL string) string {
 		return "unknown"
 	}
 	return hostname
+}
+
+// CreateHTTPClient 创建带有代理支持的 HTTP 客户端。
+//
+// 支持的代理协议（Go 1.7+ net/http.Transport 原生支持）：
+//
+//	http://host:port                     HTTP 代理
+//	http://user:pass@host:port           HTTP 代理（带认证）
+//	https://host:port                    HTTPS 代理
+//	socks5://host:port                   SOCKS5 代理（本地 DNS 解析）
+//	socks5://user:pass@host:port         SOCKS5 代理（带认证）
+//	socks5h://host:port                  SOCKS5H 代理（由代理服务器解析 DNS）
+//
+// 所有协议均通过 http.Transport.Proxy = http.ProxyURL() 实现，
+// 完整保留 request context 的取消/超时语义，无需额外依赖。
+func CreateHTTPClient(proxyAddr string) (*http.Client, error) {
+	if proxyAddr == "" {
+		color.Cyan("[代理] 未设置代理，使用直连模式")
+		return &http.Client{}, nil
+	}
+
+	proxyURL, err := url.Parse(proxyAddr)
+	if err != nil {
+		return nil, fmt.Errorf("[代理] 解析代理地址失败 %q: %v", proxyAddr, err)
+	}
+
+	scheme := strings.ToLower(proxyURL.Scheme)
+	switch scheme {
+	case "http", "https", "socks5", "socks5h":
+		// net/http.Transport 从 Go 1.7 起原生支持 socks5/socks5h scheme，
+		// 直接使用 http.ProxyURL 即可，context 取消/超时语义完整保留。
+		transport := &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+		}
+		client := &http.Client{Transport: transport}
+
+		host := proxyURL.Hostname()
+		port := proxyURL.Port()
+		user := ""
+		if proxyURL.User != nil {
+			user = proxyURL.User.Username()
+		}
+		dnsNote := ""
+		if scheme == "socks5" {
+			dnsNote = " (DNS: 本地解析)"
+		} else if scheme == "socks5h" {
+			dnsNote = " (DNS: 远端解析)"
+		}
+		if user != "" {
+			color.Cyan("[代理] 使用 %s 代理: %s:%s (用户: %s)%s", strings.ToUpper(scheme), host, port, user, dnsNote)
+		} else {
+			color.Cyan("[代理] 使用 %s 代理: %s:%s%s", strings.ToUpper(scheme), host, port, dnsNote)
+		}
+		return client, nil
+
+	default:
+		return nil, fmt.Errorf("[代理] 不支持的代理协议 %q，支持: http, https, socks5, socks5h", scheme)
+	}
 }

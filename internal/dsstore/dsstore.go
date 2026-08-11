@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"dumpall-go/internal/dumper"
+	"dumpall-go/pkg/utils"
+
+	"github.com/fatih/color"
 )
 
 // DsStoreDumper 实现 DS_Store 子命令
@@ -67,18 +69,12 @@ func (d *DsStoreDumper) Check(targetURL string, client *http.Client) (bool, erro
 }
 
 // Execute 执行下载操作
-func (d *DsStoreDumper) Execute(targetURL string, outdir string, proxy string, force bool, debug bool, workers int, progressCb dumper.ProgressCallback) error {
-	// 创建HTTP客户端
-	client := &http.Client{}
-	if proxy != "" {
-		proxyURL, err := url.Parse(proxy)
-		if err != nil {
-			return fmt.Errorf("代理设置错误: %v", err)
-		}
-		transport := &http.Transport{
-			Proxy: http.ProxyURL(proxyURL),
-		}
-		client.Transport = transport
+func (d *DsStoreDumper) Execute(targetURL string, outdir string, proxyAddr string, force bool, debug bool, workers int, progressCb dumper.ProgressCallback) error {
+	// 创建HTTP客户端（支持 http/https/socks5 代理）
+	color.Cyan("[DSStore] 初始化扫描: %s", targetURL)
+	client, err := utils.CreateHTTPClient(proxyAddr)
+	if err != nil {
+		return fmt.Errorf("[DSStore] 创建HTTP客户端失败: %v", err)
 	}
 
 	// 确保URL以/结尾
@@ -95,9 +91,11 @@ func (d *DsStoreDumper) Execute(targetURL string, outdir string, proxy string, f
 	fileURL := targetURL + ".DS_Store"
 	localPath := filepath.Join(outdir, ".DS_Store")
 
+	color.Yellow("[DSStore] 请求: %s", fileURL)
 	// 下载文件
 	resp, err := client.Get(fileURL)
 	if err != nil {
+		color.Red("[DSStore] 请求失败: %s -> %v", fileURL, err)
 		if progressCb != nil {
 			progressCb(fileURL, 0, "下载失败")
 		}
@@ -111,12 +109,14 @@ func (d *DsStoreDumper) Execute(targetURL string, outdir string, proxy string, f
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		color.Yellow("[DSStore] 文件不存在(状态码 %d): %s", resp.StatusCode, fileURL)
 		return fmt.Errorf("文件不存在")
 	}
 
 	// 创建本地文件
 	f, err := os.Create(localPath)
 	if err != nil {
+		color.Red("[DSStore] 创建本地文件失败 %s: %v", localPath, err)
 		if progressCb != nil {
 			progressCb(fileURL, 0, "创建文件失败")
 		}
@@ -127,12 +127,14 @@ func (d *DsStoreDumper) Execute(targetURL string, outdir string, proxy string, f
 	// 写入文件内容
 	_, err = io.Copy(f, resp.Body)
 	if err != nil {
+		color.Red("[DSStore] 写入失败 %s: %v", localPath, err)
 		if progressCb != nil {
 			progressCb(fileURL, 0, "写入失败")
 		}
 		return err
 	}
 
+	color.Green("[DSStore] 已保存: %s -> %s", fileURL, localPath)
 	return nil
 }
 
@@ -145,21 +147,10 @@ func (d *DsStoreDumper) Validate(url string) error {
 }
 
 // Dump 下载并解析 .DS_Store 文件
-func (d *DsStoreDumper) Dump(targetURL, outdir, proxy string, force bool) error {
-	// 解析代理URL
-	var httpClient *http.Client
-	if proxy != "" {
-		proxyURL, err := url.Parse(proxy)
-		if err != nil {
-			return fmt.Errorf("解析代理URL失败: %v", err)
-		}
-		httpClient = &http.Client{
-			Transport: &http.Transport{
-				Proxy: http.ProxyURL(proxyURL),
-			},
-		}
-	} else {
-		httpClient = &http.Client{}
+func (d *DsStoreDumper) Dump(targetURL, outdir, proxyAddr string, force bool) error {
+	httpClient, err := utils.CreateHTTPClient(proxyAddr)
+	if err != nil {
+		return fmt.Errorf("创建HTTP客户端失败: %v", err)
 	}
 
 	// 下载 .DS_Store 文件
